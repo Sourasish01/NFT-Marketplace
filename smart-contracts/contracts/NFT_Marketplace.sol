@@ -23,7 +23,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 contract NFTMarketplace is ERC721URIStorage {
     
-    uint256 private _tokenId; // _tokenId – Keeps track of the total number of minted NFTs.
+    uint256 private _tokenId; // _tokenId – Keeps track of the total number of minted NFTs. // initial value is 0.
     uint256 private _itemsSold; // Keeps track of the total number of NFTs sold.
 
     address payable owner;//The marketplace owner who can modify settings.
@@ -55,7 +55,8 @@ contract NFTMarketplace is ERC721URIStorage {
     
     modifier onlyOwner{ // A modifier in Solidity is like a pre-check rule that a function must pass before executing. It helps reuse code and enforce security checks.
 
-        require(msg.sender == owner, "Only owner can call this function to update the price");// this modifier checks if msg.sender (the caller of the function) is the contract owner.
+        require(msg.sender == owner, "Only owner can call this function to update the price");
+        // this modifier checks if msg.sender (the caller of the function) is the contract owner.
         _;
     }
 
@@ -75,27 +76,32 @@ contract NFTMarketplace is ERC721URIStorage {
 
     // let create NFT token function 
 
-    function createToken(string memory tokenURI, uint256 price) public payable returns (uint256) {
-        _tokenId++ ; // increment the tokenId
-         uint256 newItemId = _tokenId; // corrected..
+    function createToken(string memory tokenURI) public payable returns (uint256) { // corrected
+        _tokenId++ ; // increment the tokenId //_tokenId keeps track of how many NFTs have been minted.
+         //Each time this function is called, _tokenId is increased by 1 to generate a new unique NFT ID.
 
-        _mint(msg.sender, newItemId);
-        _setTokenURI(newItemId, tokenURI);
-        createMarketItem(newItemId, price);
-        return newItemId;
+         uint256 newItemId = _tokenId; // The newItemId stores the newly created token's ID.
+
+        _mint(msg.sender, newItemId); //It creates a new NFT with the newItemId.
+
+        _setTokenURI(newItemId, tokenURI);// It sets the metadata URI for the newly minted NFT.This function associates a tokenURI with the NFT.
+        
+       // createMarketItem(newItemId, price);// It calls the createMarketItem function to list the NFT for sale on the marketplace.
+        return newItemId;// It returns the ID of the newly minted NFT.
 
     }
 
     // let create market item function
 
-    function createMarketItem(uint256 tokenId, uint256 price) private {
+    function createMarketItem(uint256 tokenId, uint256 price) private { // This function is private, meaning it can only be called within this contract.
+        require(ownerOf(tokenId) == msg.sender, "You must own the NFT to list it");// corrected
         require(price > 0, "Price must be at least 1 wei");
         require(msg.value == listingPrice, "Price must be equal to listing price");
 
         idMarketItem[tokenId] = MarketItem(
             tokenId,
-            payable(msg.sender),
-            payable(address(this)),
+            payable(msg.sender), //  ms.sender represents the address of the person who called the function.
+            payable(address(this)), // The address of the contract itself (the marketplace).
             price,
             false
         );
@@ -105,7 +111,7 @@ contract NFTMarketplace is ERC721URIStorage {
         emit idMarketItemCreated(
             tokenId,
             msg.sender, // seller
-            address(this), //owner
+            address(this), //owner , the contract address
             price,
             false //sold
         );
@@ -117,6 +123,7 @@ contract NFTMarketplace is ERC721URIStorage {
         require(idMarketItem[tokenId].owner == msg.sender, "Only item owner can perform this operation");
         require(msg.value == listingPrice, "Price must be equal to listing price");
         
+        // changes the owner of the NFT to the contract address (the marketplace).
         idMarketItem[tokenId].sold = false;
         idMarketItem[tokenId].price = price;
         idMarketItem[tokenId].seller = payable(msg.sender);
@@ -124,14 +131,14 @@ contract NFTMarketplace is ERC721URIStorage {
 
         _itemsSold--; // Decrement the items sold count
 
-        _transfer(msg.sender, address(this), tokenId);
+        _transfer(msg.sender, address(this), tokenId); // Transfer the NFT from the seller to the marketplace
     }
 
 
     // Function FOR MARKET SALE ...will allow the user to buy the NFT
 
-    function createMarketSale(uint256 tokenId) public payable {
-        uint256 price = idMarketItem[tokenId].price;
+    function createMarketSale(uint256 tokenId) public payable { //alows the user to purchase an NFT listed on the marketplace.
+        uint256 price = idMarketItem[tokenId].price; // 
 
         require(msg.value == price, "Please submit the asking price in order to complete the purchase");
         idMarketItem[tokenId].owner = payable(msg.sender);
@@ -141,29 +148,37 @@ contract NFTMarketplace is ERC721URIStorage {
 
         _itemsSold++; // Increment the items sold count
 
-        _transfer(address(this), msg.sender, tokenId);
-        payable(owner).transfer(listingPrice);
-        payable(idMarketItem[tokenId].seller).transfer(msg.value);
+        _transfer(address(this), msg.sender, tokenId);// Transfer the NFT from the marketplace to the buyer
+
+        payable(owner).transfer(listingPrice);// Transfer the listing price to the owner of the marketplace
+
+        payable(idMarketItem[tokenId].seller).transfer(msg.value);// Transfer the sale price to the seller
     }
 
     // Function FOR FETCHING UNSOLD ITEMS ...will allow the user to fetch the unsold items
 
     function fetchMarketItems() public view returns (MarketItem[] memory) {
-        uint256 itemCount = _tokenId;
-        uint256 unsoldItemCount = _tokenId - _itemsSold;
-        uint256 currentIndex = 0;
+        uint256 itemCount = _tokenId; // count of all items created
+        uint256 unsoldItemCount = _tokenId - _itemsSold; // count of unsold items
+        
+        uint256 currentIndex = 0; // index to keep track of the current item being processed
 
         MarketItem[] memory items = new MarketItem[](unsoldItemCount);
 
-        for (uint256 i = 0; i < itemCount; i++) {
-            if (idMarketItem[i + 1].owner == address(this)) {
-                uint256 currentId = i + 1;
-                MarketItem storage currentItem = idMarketItem[currentId];
-                items[currentIndex] = currentItem;
-                currentIndex += 1;
+        for (uint256 i = 0; i < itemCount; i++) { // loop through all items
+
+            if (idMarketItem[i + 1].owner == address(this)) { // check if the item is unsold ,
+            // .owner == address(this) means the NFT is held by the marketplace, so it’s still listed and hasn’t been sold yet.
+                
+                uint256 currentId = i + 1; // id of the current item that has not been sold
+
+                MarketItem storage currentItem = idMarketItem[currentId]; // stores the  current item, in which the loop is iterating
+               
+                items[currentIndex] = currentItem; // add the current item to the items array
+                currentIndex += 1; // increment the current index in the items array.
             }
         }
-        return items;
+        return items;// return the array of unsold items
     }
 
     // function to purchase item
@@ -181,7 +196,7 @@ contract NFTMarketplace is ERC721URIStorage {
 
         MarketItem[] memory items = new MarketItem[](itemCount);
 
-        for (uint256 i = 0; i < totalItemCount; i++) {
+        for (uint256 i = 0; i < totalItemCount; i++) { // loops through all items
             if (idMarketItem[i + 1].owner == msg.sender) {
                 uint256 currentId = i + 1;
                 MarketItem storage currentItem = idMarketItem[currentId];
@@ -230,20 +245,6 @@ contract NFTMarketplace is ERC721URIStorage {
 }
 
 /**
- How Does NFTMarketplace Inherit ERC721URIStorage?
-In Solidity, inheritance allows one contract to reuse code from another contract.
-Your NFTMarketplace contract inherits from ERC721URIStorage, meaning it can:
-✔ Mint NFTs (create new tokens).
-✔ Store metadata URIs (images, descriptions, attributes).
-✔ Enable NFT transfers between users.
-
-📌 The Inheritance Syntax
-
-contract NFTMarketplace is ERC721URIStorage {...}
-
-🔹 NFTMarketplace is a child contract of ERC721URIStorage.
-🔹 It inherits all functions from ERC721 and ERC721URIStorage.
-🔹 It extends functionality by adding a marketplace system (listing, selling, reselling).
 
 */
 
@@ -332,3 +333,5 @@ emit idMarketItemCreated(
 🚀 This action triggers an event, making it visible on the blockchain!
 
  */
+
+
