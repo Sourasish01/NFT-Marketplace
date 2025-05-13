@@ -1,6 +1,6 @@
 'use client';
 
-import { ShoppingCart, UserPlus, LogIn, LogOut, Lock, Home, PlusCircle, Key, Wallet } from "lucide-react";
+import { Home, PlusCircle, Key, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/store/useAuthStore";
 
@@ -11,9 +11,9 @@ import { useEffect, useState } from "react";
 
 
 const Navbar = () => {
-    const user = false;
-    const isAdmin = true;
-    const cart = 3;
+   
+
+	
 	const { connectWallet } = useAuthStore();
 	const pathname = usePathname(); // 🧠 Get current path
 
