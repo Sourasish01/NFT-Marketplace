@@ -2,11 +2,17 @@ import { create } from "zustand";
 import toast from "react-hot-toast";
 import { ethers } from "ethers"; // Importing ethers.js library for Ethereum interactions
 
+import { contractAddress, contractAbi } from  "@/config/connectionKeys"; // Importing contract address and ABI from a configuration file"
+
 export const useAuthStore = create((set, get) => ({
 
     authUser: false,
     isLoggingIn: false,
     connectedAddress: null,
+
+    contractInstance: null, // Initialize contractInstance to null
+
+
 
 
     connectWallet: async () => {
@@ -36,6 +42,12 @@ export const useAuthStore = create((set, get) => ({
         //await ensures the address retrieval completes before proceeding.
 
         set({ connectedAddress: account }); //The connected account address is stored in the Zustand store using set.
+
+
+        
+        const contract = new ethers.Contract(contractAddress, contractAbi, signer);
+
+        set({ contractInstance: contract }); //The contract instance is created using ethers.Contract, which allows interaction with the smart contract.
 
 
         console.log("Connected account:", account); //Logs the connected account address to the console.

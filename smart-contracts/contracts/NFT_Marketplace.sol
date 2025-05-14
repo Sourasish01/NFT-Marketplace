@@ -18,9 +18,94 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 //By default, ERC721.sol does not store metadata (like name, image, or description) for NFTs.
 //ERC721URIStorage.sol adds a _tokenURIs mapping to store metadata on-chain.
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract NFTMarketplace is ERC721URIStorage, Ownable {
+    uint256 private nextTokenId = 1;
+
+    struct NFTListing {
+        uint256 price;
+        address seller;
+    }
+
+    mapping(uint256 => NFTListing) private listings;
+
+    event NFTTransfer(
+        uint256 tokenId,
+        address from,
+        address to,
+        string tokenURI,
+        uint256 price
+    );
+
+    constructor() ERC721("NFT Marketplace Token", "MYNFT") Ownable(msg.sender) {}
+
+    function createNFT(string calldata tokenURI) external {
+        uint256 tokenId = nextTokenId;
+        nextTokenId++;
+
+        _mint(msg.sender, tokenId);
+        _setTokenURI(tokenId, tokenURI);
+
+        emit NFTTransfer(tokenId, address(0), msg.sender, tokenURI, 0);
+    }
+
+    function listNFT(uint256 tokenId, uint256 price) external {
+        require(ownerOf(tokenId) == msg.sender, "Not the token owner");
+        require(price > 0, "Price must be greater than zero");
+
+        _transfer(msg.sender, address(this), tokenId);
+
+        listings[tokenId] = NFTListing(price, msg.sender);
+
+        emit NFTTransfer(tokenId, msg.sender, address(this), "", price);
+    }
+
+    function buyNFT(uint256 tokenId) external payable {
+        NFTListing memory listing = listings[tokenId];
+        require(listing.price > 0, "NFT not listed for sale");
+        require(msg.value == listing.price, "Incorrect payment amount");
+
+        delete listings[tokenId];
+
+        // Transfer 95% to the seller
+        uint256 sellerAmount = (msg.value * 95) / 100;
+        payable(listing.seller).transfer(sellerAmount);
+
+        // Transfer NFT to buyer
+        _transfer(address(this), msg.sender, tokenId);
+
+        emit NFTTransfer(tokenId, address(this), msg.sender, "", 0);
+    }
+
+    function cancelListing(uint256 tokenId) external {
+        NFTListing memory listing = listings[tokenId];
+        require(listing.price > 0, "NFT not listed");
+        require(listing.seller == msg.sender, "You're not the seller");
+
+        delete listings[tokenId];
+
+        _transfer(address(this), msg.sender, tokenId);
+
+        emit NFTTransfer(tokenId, address(this), msg.sender, "", 0);
+    }
+
+    function withdrawFunds() external onlyOwner {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No balance to withdraw");
+
+        payable(owner()).transfer(balance);
+    }
+
+    function getListing(uint256 tokenId) external view returns (uint256, address) {
+        NFTListing memory listing = listings[tokenId];
+        return (listing.price, listing.seller);
+    }
+}
 
 
 
+/*
 contract NFTMarketplace is ERC721URIStorage {
     
     uint256 private _tokenId; // _tokenId – Keeps track of the total number of minted NFTs. // initial value is 0.
@@ -242,7 +327,7 @@ contract NFTMarketplace is ERC721URIStorage {
 
 
     
-}
+
 
 /**
 
@@ -333,5 +418,7 @@ emit idMarketItemCreated(
 🚀 This action triggers an event, making it visible on the blockchain!
 
  */
+
+
 
 
