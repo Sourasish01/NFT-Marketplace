@@ -23,14 +23,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract NFTMarketplace is ERC721URIStorage, Ownable {
     uint256 private nextTokenId = 1;
 
-    struct NFTListing {
+    struct NFTListing { // struct is a way to define a custom data type in Solidity.
         uint256 price;
         address seller;
     }
+   
+    mapping(uint256 => NFTListing) private listings; // A mapping is a key-value store in Solidity 
 
-    mapping(uint256 => NFTListing) private listings;
-
-    event NFTTransfer(
+    event NFTTransfer( 
         uint256 tokenId,
         address from,
         address to,
@@ -38,7 +38,9 @@ contract NFTMarketplace is ERC721URIStorage, Ownable {
         uint256 price
     );
 
-    constructor() ERC721("NFT Marketplace Token", "MYNFT") Ownable(msg.sender) {}
+    // A constructor in Solidity is a special function that runs only once—when the contract is deployed. 
+    constructor() ERC721("NFT Marketplace Token", "MYNFT") Ownable(msg.sender) {} //Ownable is a contract from OpenZeppelin that allows you to set an owner for the contract ie who deploys it ..as a result the person that triggered the constructor ...ie msg.sender ,
+    // who can perform privileged actions like withdrawing funds or changing settings.
 
     function createNFT(string calldata tokenURI) external {
         uint256 tokenId = nextTokenId;

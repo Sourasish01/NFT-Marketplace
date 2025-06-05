@@ -14,7 +14,6 @@ export const useAuthStore = create((set, get) => ({
 
 
 
-
     connectWallet: async () => {
         if (!window.ethereum) { //window.ethereum is injected by MetaMask into the browser when it's installed.
             toast.error("Please install MetaMask!"); //If window.ethereum doesn't exist, it means MetaMask (or any Ethereum provider) is not available.

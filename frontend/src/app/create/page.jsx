@@ -2,13 +2,16 @@
 
 import React, { useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useNftStore } from "@/store/useNftStore";
 import { uploadToNFTStorage } from "@/store/useMetaDataStore";
+import toast from "react-hot-toast";
 
 import { motion } from "framer-motion";
 import { PlusCircle, Upload, Loader } from "lucide-react";
 
 const Page = () => {
   const { authUser, isLoggingIn } = useAuthStore();
+  const { createNFT } = useNftStore();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -57,6 +60,15 @@ const Page = () => {
 
       // TODO: Add smart contract minting or listing logic here using metadataURL
       // ie the creation of the NFT on the blockchain
+      await createNFT(metadataURL);
+      console.log("🎉 NFT minted on-chain!");
+
+      // 🟢 Show toast
+      toast.success("🎉 NFT minted successfully!");
+
+      // 🔁 Reset the form
+      setFormData({ name: "", description: "", image: null });
+      setImagePreview(null);
 
     } catch (err) {
       console.error("❌ Upload failed:", err);
