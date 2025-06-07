@@ -29,6 +29,7 @@ contract NFTMarketplace is ERC721URIStorage, Ownable {
     }
    
     mapping(uint256 => NFTListing) private listings; // A mapping is a key-value store in Solidity 
+    // This mapping is private, meaning it can only be accessed within this contract.
 
     event NFTTransfer( 
         uint256 tokenId,
@@ -42,298 +43,147 @@ contract NFTMarketplace is ERC721URIStorage, Ownable {
     constructor() ERC721("NFT Marketplace Token", "MYNFT") Ownable(msg.sender) {} //Ownable is a contract from OpenZeppelin that allows you to set an owner for the contract ie who deploys it ..as a result the person that triggered the constructor ...ie msg.sender ,
     // who can perform privileged actions like withdrawing funds or changing settings.
 
-    function createNFT(string calldata tokenURI) external {
+    function createNFT(string calldata tokenURI) external { // #3>> this function is external, meaning it can be called by anyone outside the contract.
         uint256 tokenId = nextTokenId;
         nextTokenId++;
 
-        _mint(msg.sender, tokenId);
-        _setTokenURI(tokenId, tokenURI);
+        _mint(msg.sender, tokenId); //Mint the NFT to the sender’s wallet..ie the caller of the function. This line mints (creates) the NFT and assigns its ownership to the caller of the function, which is msg.sender.
+        _setTokenURI(tokenId, tokenURI);//Store the metadata storage link at nftstorage ..to the NFT.
 
-        emit NFTTransfer(tokenId, address(0), msg.sender, tokenURI, 0);
+        emit NFTTransfer(tokenId, address(0), msg.sender, tokenURI, 0);//event: from = address(0) = minting done....to = msg.sender....price = 0 = not listed.
     }
 
-    function listNFT(uint256 tokenId, uint256 price) external {
-        require(ownerOf(tokenId) == msg.sender, "Not the token owner");
-        require(price > 0, "Price must be greater than zero");
+    function listNFT(uint256 tokenId, uint256 price) external { // #3>>
+        require(ownerOf(tokenId) == msg.sender, "Not the token owner"); // Checks if the caller is the owner of the NFT
+        require(price > 0, "Price must be greater than zero"); // Ensures the price input for listing is greater than zero ..before we apply the listing.
 
-        _transfer(msg.sender, address(this), tokenId);
+        _transfer(msg.sender, address(this), tokenId); //# 4>>✅ The NFT is now in the custody of the NFTMarketplace smart contract itself — not the marketplace owner.
+        // This line transfers the NFT from the owner (msg.sender) to the contract itself, effectively putting it up for sale.
 
-        listings[tokenId] = NFTListing(price, msg.sender);
+        listings[tokenId] = NFTListing(price, msg.sender); //after the transfer, we create a new NFTListing struct and store it in the listings mapping.
 
-        emit NFTTransfer(tokenId, msg.sender, address(this), "", price);
+        emit NFTTransfer(tokenId, msg.sender, address(this), "", price); //event: from = msg.sender....to = address(this)....price != 0 listed.
     }
 
-    function buyNFT(uint256 tokenId) external payable {
-        NFTListing memory listing = listings[tokenId];
-        require(listing.price > 0, "NFT not listed for sale");
-        require(msg.value == listing.price, "Incorrect payment amount");
 
-        delete listings[tokenId];
+    function buyNFT(uint256 tokenId) external payable { //#3>> 
+    //payable allows the function to accept Ether as payment from the transaction of the buyer using msg.value.
+    //The function must be marked payable to accept and use msg.value
+    //msg : A global object with info about the current function call
+
+        NFTListing memory listing = listings[tokenId]; // #5>> Retrieves the listing details for the specified tokenId from the listings mapping.
+        
+        
+        require(listing.price > 0, "NFT not listed for sale"); // Checks if the NFT is listed for sale by verifying that the price is greater than zero.
+        require(msg.value == listing.price, "Incorrect payment amount"); // Ensures the buyer is sending the exact listing price.
+
+        delete listings[tokenId];// Removes the listing from the mapping, indicating that the NFT is no longer for sale.
 
         // Transfer 95% to the seller
-        uint256 sellerAmount = (msg.value * 95) / 100;
-        payable(listing.seller).transfer(sellerAmount);
+        uint256 sellerAmount = (msg.value * 95) / 100; // Calculate 95% of the payment amount to be sent to the seller.
+        payable(listing.seller).transfer(sellerAmount); // #6>> Transfers 95% of the payment to the seller’s address.
 
         // Transfer NFT to buyer
+        _transfer(address(this), msg.sender, tokenId); // after the payment is made to the seller
+        // The NFT is transferred from the contract (address(this)) to the buyer (msg.sender). ..
+        // msg sender is the buyer who called the buyNFT function.
+
+        emit NFTTransfer(tokenId, address(this), msg.sender, "", 0); 
+        // Emits an event to log the transfer of the NFT, indicating that it has been transferred from the contract to the buyer.
+        // from = address(this) = the contract itself (the marketplace)....to = msg.sender = the buyer .. price: 0 ➝ because the NFT is no longer listed
+    }
+
+    function cancelListing(uint256 tokenId) external { //#3>>
+        NFTListing memory listing = listings[tokenId];// #5>>
+
+        require(listing.price > 0, "NFT not listed"); // Checks if the NFT is listed for sale by verifying that the price is greater than zero.
+        require(listing.seller == msg.sender, "You're not the seller"); // Ensures that only the seller can cancel the listing.
+
+        delete listings[tokenId]; // Removes the listing from the mapping, indicating that the NFT is no longer for sale.
+
         _transfer(address(this), msg.sender, tokenId);
+        // Transfers the NFT back to the seller (msg.sender) from the contract (address(this)). 
 
         emit NFTTransfer(tokenId, address(this), msg.sender, "", 0);
+        // Emits an event to log the transfer of the NFT back to the seller, indicating that it has been transferred from the contract to the seller.
     }
 
-    function cancelListing(uint256 tokenId) external {
-        NFTListing memory listing = listings[tokenId];
-        require(listing.price > 0, "NFT not listed");
-        require(listing.seller == msg.sender, "You're not the seller");
+    function withdrawFunds() external onlyOwner {// # 3>>external: Only callable from outside the contract.
+        //onlyOwner: Ensures that only the contract owner can call this function (uses Ownable from OpenZeppelin).
 
-        delete listings[tokenId];
+        uint256 balance = address(this).balance; // Retrieves the balance of the contract, which is the total Ether held by the NFTMarketplace contract.
+        // This balance includes funds from NFT sales and listing fees.
+        require(balance > 0, "No balance to withdraw");// Ensures that there is a positive balance to withdraw.
 
-        _transfer(address(this), msg.sender, tokenId);
-
-        emit NFTTransfer(tokenId, address(this), msg.sender, "", 0);
+        payable(owner()).transfer(balance);// Transfers the entire balance of the contract to the owner’s address.
     }
 
-    function withdrawFunds() external onlyOwner {
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No balance to withdraw");
-
-        payable(owner()).transfer(balance);
-    }
-
-    function getListing(uint256 tokenId) external view returns (uint256, address) {
-        NFTListing memory listing = listings[tokenId];
-        return (listing.price, listing.seller);
+    function getListing(uint256 tokenId) external view returns (uint256, address) {//#3>>
+    //view: It only reads data, doesn’t change anything.
+        NFTListing memory listing = listings[tokenId]; // retrieves the listing details for the specified tokenId from the listings mapping.
+        return (listing.price, listing.seller);// Returns the price and seller address of the NFT listing.
     }
 }
 
 
 
 /*
-contract NFTMarketplace is ERC721URIStorage {
-    
-    uint256 private _tokenId; // _tokenId – Keeps track of the total number of minted NFTs. // initial value is 0.
-    uint256 private _itemsSold; // Keeps track of the total number of NFTs sold.
 
-    address payable owner;//The marketplace owner who can modify settings.
-    uint256 listingPrice = 0.015 ether;//The fee required to list an NFT.
+3>>
+ Yes, ✅ you could use public instead of external Yes, ✅ you could use public instead of external — and the function would still work the same in this case. But here’s the difference and why external is better here:Yes, ✅ you could use public instead of external — and the function would still work the same in this case. But here’s the difference and why external is better here:Yes, ✅ you could use public instead of external — and the function would still work the same in this case. But here’s the difference and why external is better here: and the function would still work the same in this case. But here’s the difference and why external is better here:
+🔍 external vs public in Solidity
 
-    mapping(uint256 => MarketItem) private idMarketItem;// A mapping (tokenId → MarketItem struct) that stores NFT details.
+Who can call it:
 
+public: Anyone (external and internal)
+external: Only from outside (transactions or other contracts)
 
-    struct MarketItem {
-    
-        uint256 tokenId;// The unique identifier for the NFT.
-        address payable seller;//The original creator or previous owner.
-        address payable owner;//Current owner (marketplace or buyer).
-        uint256 price;//Sale price of the NFT.
-        bool sold;//Whether the NFT has been sold.
+Can be called internally:
 
-    }
+public: ✅ Yes (can call directly within the contract)
+external: ❌ No (must use this.functionName() to call internally)
 
+Gas cost:
 
-    event idMarketItemCreated ( 
-        uint256 indexed tokenId,
-        address seller,
-        address owner,
-        uint256 price,
-        bool sold
-    );// event to log the creation of a market item.
+public: Higher (copies arguments from calldata to memory)
+external: Lower (reads directly from calldata)
 
-    
-    
-    modifier onlyOwner{ // A modifier in Solidity is like a pre-check rule that a function must pass before executing. It helps reuse code and enforce security checks.
+Best suited for:
 
-        require(msg.sender == owner, "Only owner can call this function to update the price");
-        // this modifier checks if msg.sender (the caller of the function) is the contract owner.
-        _;
-    }
+public: Functions used both internally and externally
+external: Functions meant to be called only externally (e.g. from frontend or other contracts)
 
 
-    constructor() ERC721("NFT Marketplace Token", "MYNFT") { // A constructor in Solidity is a special function that runs only once—when the contract is deployed.
-        owner = payable(msg.sender);
-    }
+4>>
 
-    function updateListingPrice(uint256 _listingPrice) public payable onlyOwner{
-       listingPrice = _listingPrice;
-    }
+Why it's done:
+Prevents the seller from transferring/selling the NFT elsewhere while it's listed.
 
-
-    function getListingPrice() public view returns (uint256) {
-        return listingPrice;
-    }
-
-    // let create NFT token function 
-
-    function createToken(string memory tokenURI) public payable returns (uint256) { // corrected
-        _tokenId++ ; // increment the tokenId //_tokenId keeps track of how many NFTs have been minted.
-         //Each time this function is called, _tokenId is increased by 1 to generate a new unique NFT ID.
-
-         uint256 newItemId = _tokenId; // The newItemId stores the newly created token's ID.
-
-        _mint(msg.sender, newItemId); //It creates a new NFT with the newItemId.
-
-        _setTokenURI(newItemId, tokenURI);// It sets the metadata URI for the newly minted NFT.This function associates a tokenURI with the NFT.
-        
-       // createMarketItem(newItemId, price);// It calls the createMarketItem function to list the NFT for sale on the marketplace.
-        return newItemId;// It returns the ID of the newly minted NFT.
-
-    }
-
-    // let create market item function
-
-    function createMarketItem(uint256 tokenId, uint256 price) private { // This function is private, meaning it can only be called within this contract.
-        require(ownerOf(tokenId) == msg.sender, "You must own the NFT to list it");// corrected
-        require(price > 0, "Price must be at least 1 wei");
-        require(msg.value == listingPrice, "Price must be equal to listing price");
-
-        idMarketItem[tokenId] = MarketItem(
-            tokenId,
-            payable(msg.sender), //  ms.sender represents the address of the person who called the function.
-            payable(address(this)), // The address of the contract itself (the marketplace).
-            price,
-            false
-        );
-
-        _transfer(msg.sender, address(this), tokenId);
-
-        emit idMarketItemCreated(
-            tokenId,
-            msg.sender, // seller
-            address(this), //owner , the contract address
-            price,
-            false //sold
-        );
-    }
-
-    // Function FOR RESALE TOKEN ...will allow the user to resell the NFT
-
-    function reSellToken(uint256 tokenId, uint256 price) public payable {
-        require(idMarketItem[tokenId].owner == msg.sender, "Only item owner can perform this operation");
-        require(msg.value == listingPrice, "Price must be equal to listing price");
-        
-        // changes the owner of the NFT to the contract address (the marketplace).
-        idMarketItem[tokenId].sold = false;
-        idMarketItem[tokenId].price = price;
-        idMarketItem[tokenId].seller = payable(msg.sender);
-        idMarketItem[tokenId].owner = payable(address(this));
-
-        _itemsSold--; // Decrement the items sold count
-
-        _transfer(msg.sender, address(this), tokenId); // Transfer the NFT from the seller to the marketplace
-    }
+Ensures the buyer will receive the NFT immediately and securely upon purchase..
+// cannot trust the marketplace owner to transfer the NFT to the buyer after payment, as code cannot be changed after deployment, so the NFT is now in the custody of the NFTMarketplace smart contract itself — not the marketplace owner.
 
 
-    // Function FOR MARKET SALE ...will allow the user to buy the NFT
+5>>
 
-    function createMarketSale(uint256 tokenId) public payable { //alows the user to purchase an NFT listed on the marketplace.
-        uint256 price = idMarketItem[tokenId].price; // 
+// this listing variable is a temporary copy of the NFTListing struct stored in the listings mapping ..as stored in memory.
+//if dont use the memory keyword, it will be stored in storage, which is more expensive in terms of gas.
+// if we use the listings in storage it may change the data off the mapping stored in storage in blockchain.
+// so we use memory to create a temporary copy of the listing in memory, which is cheaper(gas cost) and safer, so that we can read the data without modifying the original listing in storage.
+// This ensures that we can safely access the listing details without worrying about unintended changes.
 
-        require(msg.value == price, "Please submit the asking price in order to complete the purchase");
-        idMarketItem[tokenId].owner = payable(msg.sender);
-        idMarketItem[tokenId].sold = true;
-       // idMarketItem[tokenId].owner = payable(address(0));
-      //  idMarketItem[tokenId].seller.transfer(msg.value);
+6>>
 
-        _itemsSold++; // Increment the items sold count
+listing.seller :
+This is the address of the user who originally listed the NFT for sale.
 
-        _transfer(address(this), msg.sender, tokenId);// Transfer the NFT from the marketplace to the buyer
+payable(...) :
+In Solidity, to send ETH to an address, the address must be marked as payable.
+listing.seller is just an address, so we convert it into a payable address using payable(...).
 
-        payable(owner).transfer(listingPrice);// Transfer the listing price to the owner of the marketplace
+.transfer(sellerAmount):
+This sends the specified amount of Ether (in wei) to the payable address.
+It automatically reverts if the transfer fails.
 
-        payable(idMarketItem[tokenId].seller).transfer(msg.value);// Transfer the sale price to the seller
-    }
-
-    // Function FOR FETCHING UNSOLD ITEMS ...will allow the user to fetch the unsold items
-
-    function fetchMarketItems() public view returns (MarketItem[] memory) {
-        uint256 itemCount = _tokenId; // count of all items created
-        uint256 unsoldItemCount = _tokenId - _itemsSold; // count of unsold items
-        
-        uint256 currentIndex = 0; // index to keep track of the current item being processed
-
-        MarketItem[] memory items = new MarketItem[](unsoldItemCount);
-
-        for (uint256 i = 0; i < itemCount; i++) { // loop through all items
-
-            if (idMarketItem[i + 1].owner == address(this)) { // check if the item is unsold ,
-            // .owner == address(this) means the NFT is held by the marketplace, so it’s still listed and hasn’t been sold yet.
-                
-                uint256 currentId = i + 1; // id of the current item that has not been sold
-
-                MarketItem storage currentItem = idMarketItem[currentId]; // stores the  current item, in which the loop is iterating
-               
-                items[currentIndex] = currentItem; // add the current item to the items array
-                currentIndex += 1; // increment the current index in the items array.
-            }
-        }
-        return items;// return the array of unsold items
-    }
-
-    // function to purchase item
-
-    function fetchMyNFT() public view returns (MarketItem[] memory) {
-        uint256 totalItemCount = _tokenId;
-        uint256 itemCount = 0;
-        uint256 currentIndex = 0;
-
-        for (uint256 i = 0; i < totalItemCount; i++) {
-            if (idMarketItem[i + 1].owner == msg.sender) {
-                itemCount += 1;
-            }
-        }
-
-        MarketItem[] memory items = new MarketItem[](itemCount);
-
-        for (uint256 i = 0; i < totalItemCount; i++) { // loops through all items
-            if (idMarketItem[i + 1].owner == msg.sender) {
-                uint256 currentId = i + 1;
-                MarketItem storage currentItem = idMarketItem[currentId];
-                items[currentIndex] = currentItem;
-                currentIndex++;
-            }
-        }
-        return items;
-    }
-
-    // Single User NFT item ... will allow the user to fetch the single NFT item
-
-    function fetchMarketItem(uint256 tokenId) public view returns (MarketItem memory) {
-    require(idMarketItem[tokenId].tokenId != 0, "Market item does not exist");
-    return idMarketItem[tokenId];
-}
-
-
-    /*function fetchMarketItem(uint256 tokenId) public view returns (MarketItem memory) {
-        uint256 totalItemCount = _tokenId;
-        uint256 itemCount = 0;
-        uint256 currentIndex = 0;
-        for (uint256 i = 0; i < totalItemCount; i++) {
-            if (idMarketItem[i + 1].owner == msg.sender) {
-                itemCount += 1;
-            }
-        }
-
-        MarketItem[] memory items = new MarketItem[](itemCount);
-        for (uint256 i = 0; i < totalItemCount; i++) {
-            if (idMarketItem[i + 1].owner == msg.sender) {
-                uint256 currentId = i + 1;
-                MarketItem storage currentItem = idMarketItem[currentId];
-                items[currentIndex] = currentItem;
-                currentIndex += 1;
-            }
-        }
-        return items;
-    }
-
-    */
-
-
-
-    
-
-
-/**
-
-*/
 
 
 /**
