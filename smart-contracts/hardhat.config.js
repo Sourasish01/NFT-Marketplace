@@ -1,6 +1,6 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("@nomicfoundation/hardhat-ignition-ethers");
-//require("dotenv").config();
+require("dotenv").config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
 
@@ -15,9 +15,9 @@ module.exports = {
             url: "http://127.0.0.1:8545",
         },
 
-        /*sepolia: {
+        sepolia: {
             url: process.env.PROVIDER_URL,
             accounts: [`0x${process.env.PRIVATE_KEY}`],
-        },*/
+        },
     },
 };
