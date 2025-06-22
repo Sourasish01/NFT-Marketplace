@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useNftStore } from "@/store/useNftStore";
-import { uploadToNFTStorage } from "@/store/useMetaDataStore";
+import { uploadToPinata } from "@/store/useMetaDataStore";
 import toast from "react-hot-toast";
 
 import { motion } from "framer-motion";
@@ -19,17 +19,10 @@ const Page = () => {
     image: null,
   });
 
-
-
-
   const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(false);
 
-
-
-
-
-
+  // Function to handle image upload
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -38,11 +31,7 @@ const Page = () => {
     }
   };
 
-
-
-
-
-
+  // Function to handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -54,24 +43,38 @@ const Page = () => {
     try {
       setLoading(true);
 
-      const metadataURL = await uploadToNFTStorage(formData);
+      // 1️⃣ Upload image to Pinata
+      const imageUrl = await uploadToPinata(formData.image);
+      console.log("🖼️ Image uploaded to IPFS:", imageUrl);
 
-      console.log("✅ Metadata uploaded to:", metadataURL);
+      // 2️⃣ Create metadata object
+      const metadata = {
+        name: formData.name,
+        description: formData.description,
+        image: imageUrl, // Important: should point to IPFS image
+      };
 
-      // TODO: Add smart contract minting or listing logic here using metadataURL
-      // ie the creation of the NFT on the blockchain
-      await createNFT(metadataURL);
+      // 3️⃣ Upload metadata JSON to Pinata
+      const metadataBlob = new Blob([JSON.stringify(metadata)], {
+        type: "application/json",
+      });
+      const metadataFile = new File([metadataBlob], "metadata.json");
+
+      const metadataUrl = await uploadToPinata(metadataFile);
+      console.log("✅ Metadata uploaded to:", metadataUrl);
+
+      // 4️⃣ Mint NFT using metadata URL
+      await createNFT(metadataUrl);
       console.log("🎉 NFT minted on-chain!");
 
-      // 🟢 Show toast
       toast.success("🎉 NFT minted successfully!");
 
-      // 🔁 Reset the form
+      // Reset form
       setFormData({ name: "", description: "", image: null });
       setImagePreview(null);
-
     } catch (err) {
       console.error("❌ Upload failed:", err);
+      toast.error("Failed to mint NFT.");
     } finally {
       setLoading(false);
     }

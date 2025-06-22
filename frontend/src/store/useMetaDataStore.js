@@ -1,15 +1,27 @@
-import { NFTStorage, File } from 'nft.storage';
+// utils/uploadToPinata.js
+import axios from "axios";
 
-export const uploadToNFTStorage = async ({ name, description, image }) => {
-  const nftStorage = new NFTStorage({
-    token: process.env.NFT_STORAGE_KEY,
-  });
+export async function uploadToPinata(file) {
+  const formData = new FormData();
+  formData.append("file", file);
 
-  const metadata = await nftStorage.store({
-    name,
-    description,
-    image: new File([image], image.name, { type: image.type }),
-  });
+  try {
+    const res = await axios.post("https://api.pinata.cloud/pinning/pinFileToIPFS", formData, {
+      maxContentLength: "Infinity", // for large files
+      headers: {
+        "Content-Type": "multipart/form-data",
+        "pinata_api_key": process.env.NEXT_PUBLIC_PINATA_API_KEY,
+        "pinata_secret_api_key": process.env.NEXT_PUBLIC_PINATA_API_SECRET,
+      },
+    });
 
-  return metadata.url;
-};
+    const ipfsHash = res.data.IpfsHash;
+    const url = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+    return url;
+  } catch (error) {
+    console.error("Error uploading to Pinata:", error);
+    throw error;
+  }
+}
+
+
