@@ -3,7 +3,10 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
-import { Toaster } from "react-hot-toast";
+//import { Toaster } from "react-hot-toast";
+//import { Provider } from 'urql';
+import ClientProviders from "@/components/ClientProviders"; // Import the new client component
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,11 +34,14 @@ export default function RootLayout({ children }) {
           </div>
         </div>
 
-        <div className="relative z-50 pt-20">
-          <Navbar />
-          {children}
-        </div>
-        <Toaster />
+        {/* Wrap content with ClientProviders */}
+        <ClientProviders>
+          <div className="relative z-50 pt-20">
+            <Navbar />
+            {children}
+          </div>
+        </ClientProviders>
+        {/* Toaster is now inside ClientProviders */}
       </body>
     </html>
   );
