@@ -1,4 +1,16 @@
 
+type NFT @entity(immutable: false) {
+  id: ID!
+  tokenId: BigInt!
+  currentOwner: Bytes!
+  tokenURI: String!
+  isListed: Boolean!
+  price: BigInt!
+  createdAtTimestamp: BigInt!
+  createdAtBlockNumber: BigInt!
+  listedBy: Bytes
+}
+
 type NFTTransfer @entity(immutable: true) {
   id: ID!
   tokenId: BigInt!
@@ -6,4 +18,7 @@ type NFTTransfer @entity(immutable: true) {
   to: Bytes!
   tokenURI: String!
   price: BigInt!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
 }

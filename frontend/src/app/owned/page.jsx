@@ -1,4 +1,5 @@
 "use client"
+
 import React, { use } from 'react'
 import { useAuthStore } from "@/store/useAuthStore";
 import useOwnedNFTs from '@/store/useGraphStoreHooks.js/useOwnedNFTs'; 
@@ -7,23 +8,17 @@ import useOwnedListedNFTs from '@/store/useGraphStoreHooks.js/useOwnedListedNFTs
 import NFTCard from '@/components/NFTcard';
 import EmptyState from '@/components/EmptyState'; // Assuming you have an EmptyState component for displaying empty states
 
-const Page = () => { // Renamed 'page' to 'Page' for standard component naming
+const Page = () => { 
   const {/* authUser,*/ isLoggingIn, connectedAddress } = useAuthStore();
-  // Destructure `refetch` from both hooks
   const { ownedNFTs, loading: loadingOwned, error: errorOwned, refetch: refetchOwnedNFTs } = useOwnedNFTs();
   const { ownedListedNFTs, loading: loadingListed, error: errorListed, refetch: refetchOwnedListedNFTs } = useOwnedListedNFTs();
 
-  // --- START CONSOLE LOGS ---
-  console.log("--- OwnedPage Render ---");
   console.log("connectedAddress:", connectedAddress);
-  console.log("isLoggingIn:", isLoggingIn);
-  console.log("loadingOwned:", loadingOwned);
   console.log("errorOwned:", errorOwned);
   console.log("ownedNFTs:", ownedNFTs);
-  console.log("loadingListed:", loadingListed);
   console.log("errorListed:", errorListed);
   console.log("ownedListedNFTs:", ownedListedNFTs);
-  console.log("----------------------");
+
   // --- END CONSOLE LOGS ---
 
   // Combined refetch handler to pass to NFTCard

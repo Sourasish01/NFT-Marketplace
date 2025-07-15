@@ -7,7 +7,7 @@ const GET_OWNED_LISTED_NFTS = `
   query GetOwnedListedNFTs($owner: String!) {
     nfttransfers(
       where: {
-        to: "${contractAddress}",
+        to: "${contractAddress}", 
         from: $owner
       }
     ) {
@@ -20,6 +20,7 @@ const GET_OWNED_LISTED_NFTS = `
     }
   }
 `;
+
 
 const useOwnedListedNFTs = () => {
    const address = useAuthStore(state => state.connectedAddress);
@@ -42,4 +43,15 @@ const useOwnedListedNFTs = () => {
   };
 };
 
-export default useOwnedListedNFTs;
+export default useOwnedListedNFTs; 
+
+/*
+
+The GraphQL query expects string values for both to and from fields within the where clause.
+
+to: "${contractAddress}": In this case, contractAddress is a JavaScript variable that holds a string (the contract's address). The ${...} syntax interpolates that string value directly into the GraphQL query string. So, when the GraphQL server receives the query, it sees to: "0xYourContractAddress", which is a string.
+
+from: $owner: Here, $owner is a GraphQL variable of type String!. You then pass the actual string value for this variable in the variables object of your useQuery hook: variables: { owner: address ?? '' }. The address variable from your useAuthStore is also a string (the connected wallet address).
+
+
+*/ 

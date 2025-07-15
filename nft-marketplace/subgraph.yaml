@@ -16,7 +16,8 @@ dataSources:
       apiVersion: 0.0.9
       language: wasm/assemblyscript
       entities:
-        - NFTTransfer
+        - NFT # <--- Ensure this is present
+        - NFTTransfer # <--- Ensure this is present
       
       abis:
         - name: NFTMarketplace
