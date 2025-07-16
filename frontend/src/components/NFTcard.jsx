@@ -11,6 +11,8 @@ import { toast } from "react-hot-toast"; // Using react-hot-toast now
 import { useAuthStore } from "@/store/useAuthStore"; // Your auth store for connectedAddress
 import { useNftStore } from "@/store/useNftStore"; // Your NFT marketplace actions store
 
+import { contractAddress as marketplaceContractAddress } from "@/config/connectionKeys"; // Import marketplace address
+
 // Helper to convert IPFS URLs to HTTPS (ensure this path is correct or define it here)
 // Assuming ipfsToHTTPS function is either globally available or defined within this file.
 // If it's in a separate file, import it:
@@ -97,14 +99,34 @@ const NFTCard = (props) => {
 
  //---------------------------------------------------------------------------------------------------------------------------------
 
-  // Determine if the NFT is currently listed for sale (from subgraph)
-  const forSale = nft.isListed;
-  // Determine if the connected wallet owns this NFT
-  // nft.to is the current owner from your subgraph `nfttransfers`
-  const owned = connectedAddress && (
-    (!forSale && nft.to.toLowerCase() === connectedAddress.toLowerCase()) || // If NOT for sale, check if current holder is connected user
-    (forSale && nft.from.toLowerCase() === connectedAddress.toLowerCase())   // If FOR sale, check if original lister is connected user
+  // --- NEW LOGIC FOR OWNERSHIP AND LISTING STATUS ---
+  // `nft` now comes from the `nfts` query and has `currentOwner`, `isListed`, `listedBy`
+  const isCurrentlyListed = nft.isListed;
+
+  // Determine if the connected user is the current owner of the NFT (if not listed)
+  // Or if they are the lister (if it is listed on the marketplace)
+  const isConnectedUserOwner = connectedAddress && (
+    (!isCurrentlyListed && nft.currentOwner?.toLowerCase() === connectedAddress.toLowerCase()) || // Owned by user directly
+    (isCurrentlyListed && nft.listedBy?.toLowerCase() === connectedAddress.toLowerCase()) // Listed by user (currently in marketplace's ownership)
   );
+
+  // Determine if the NFT is listed and NOT owned by the connected user (i.e., someone else's listing)
+  const isAvailableToBuy = isCurrentlyListed &&
+                           nft.currentOwner?.toLowerCase() === marketplaceContractAddress.toLowerCase() &&
+                           nft.listedBy?.toLowerCase() !== connectedAddress.toLowerCase();
+
+
+  // Determine if the connected user can cancel a listing
+  const canCancelListing = connectedAddress &&
+                           isCurrentlyListed &&
+                           nft.listedBy?.toLowerCase() === connectedAddress.toLowerCase();
+
+  // Determine if the connected user can list this NFT (i.e., they own it and it's not listed)
+  const canList = connectedAddress &&
+                  !isCurrentlyListed &&
+                  nft.currentOwner?.toLowerCase() === connectedAddress.toLowerCase();
+
+  //---------------------------------------------------------------------------------------------------------------------------------
 
   const onButtonClick = async () => {
     // Prevent multiple clicks while an action is ongoing
@@ -113,23 +135,23 @@ const NFTCard = (props) => {
     // Use `nft.tokenId` which is the `tokenId` in your system
     const tokenId = nft.tokenId;
 
-    if (owned) {
-      if (forSale) {
-        // NFT is owned and listed, so cancel listing
-        await onCancelClicked(tokenId);
-      } else {
-        // NFT is owned but not listed, so open sell popup
-        setSellPopupOpen(true);
-      }
+    // --- FIX: Use the new specific flags instead of `owned` and `forSale` ---
+    if (canList) {
+      // NFT is owned by connected user and not listed, so open sell popup
+      setSellPopupOpen(true);
+    } else if (canCancelListing) {
+      // NFT is owned by connected user AND listed, so cancel listing
+      await onCancelClicked(tokenId);
+    } else if (isAvailableToBuy) {
+      // NFT is NOT owned by connected user but IS listed and available, so buy it
+      await onBuyClicked(tokenId, nft.price); // Pass current price (from subgraph, in Wei string)
     } else {
-      if (forSale) {
-        // NFT is not owned but is listed, so buy it
-        await onBuyClicked(tokenId, nft.price); // Pass current price (from subgraph, in Wei string)
-      } else {
-        // This case should ideally not happen if logic is correct
-        console.warn("onButtonClick called for unowned, unlisted NFT. This might indicate a logic error or subgraph delay.");
-        showErrorToast("NFT is not available for purchase or relisting.");
-      }
+      // This case means the NFT is either unowned and unlisted, or some other unexpected state
+      // You might want to navigate to a detail page, or just disable the button.
+      console.warn("onButtonClick: No valid action for this NFT in its current state and connected user status.");
+      showErrorToast("This NFT is not currently available for your actions.");
+      // If you want to navigate to a detail page for unowned, unlisted NFTs:
+      // router.push(`/nft/${tokenId}`); // Uncomment if you have an NFT detail page
     }
   };
 
@@ -187,11 +209,10 @@ const NFTCard = (props) => {
   return (
     <div
       className={classNames(
-        "flex w-72 flex-shrink-0 flex-col overflow-hidden rounded-xl border font-semibold shadow-sm bg-gray-900 text-white", // Added dark background for card
+        "flex w-72 flex-shrink-0 flex-col overflow-hidden rounded-xl border font-semibold shadow-sm bg-gray-900 text-white",
         className
       )}
     >
-      {/* Conditionally render image or loading state */}
       {meta ? (
         <img
           src={meta.imageURL}
@@ -200,7 +221,7 @@ const NFTCard = (props) => {
         />
       ) : (
         <div className="flex h-80 w-full items-center justify-center bg-gray-700">
-          Loading Metadata...
+          {loading ? "Loading Metadata..." : "No Image."}
         </div>
       )}
 
@@ -209,14 +230,24 @@ const NFTCard = (props) => {
         <span className="text-sm font-normal text-gray-300">
           {meta?.description ?? "No description available."}
         </span>
-        {/* Display current owner using nft.to */}
-        <AddressAvatar address={nft.to} className="mt-2 text-sm text-gray-400" />
+        {/* Display current owner using nft.currentOwner */}
+        {/*
+          IMPORTANT: You also have an AddressAvatar here using `nft.to`.
+          This also needs to be changed from `nft.to` to `nft.currentOwner`.
+          The error message for `forSale` implies the issue is in the price display block,
+          but if AddressAvatar uses `nft.to`, that's another potential issue.
+          I'll assume you already got the previous fix in for the `AddressAvatar`
+          prop, but if not, ensure it uses `nft.currentOwner`.
+        */}
+        <AddressAvatar address={nft.currentOwner} className="mt-2 text-sm text-gray-400" />
 
-        {forSale && nft.price && nft.price !== "0" && (
-          // Display price, assuming nft.price is a Wei string and needs formatting
+
+        {/* FIX: Change `forSale` to `isCurrentlyListed` here */}
+        {isCurrentlyListed && nft.price && nft.price !== "0" && (
           <p className="text-xl font-bold mt-2">Price: {formatEther(nft.price)} ETH</p>
         )}
-        {!forSale && (
+        {/* FIX: Change `!forSale` to `!isCurrentlyListed` here */}
+        {!isCurrentlyListed && (
           <p className="text-md mt-2 text-gray-400">Not listed for sale</p>
         )}
       </div>
@@ -225,27 +256,24 @@ const NFTCard = (props) => {
       <button
         className="group flex h-16 items-center justify-center bg-blue-600 text-lg font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
         onClick={onButtonClick}
-        disabled={isActionLoading || loading} // Disable if any action is ongoing or initial metadata is loading
+        disabled={isActionLoading || loading}
       >
-        {isActionLoading || loading ? "Processing..." : ( // Show processing for any active action
+        {isActionLoading || loading ? "Processing..." : (
           <>
-            {!forSale && owned && "SELL"} {/* Owned but not for sale -> Sell */}
-            {forSale && owned && ( // Owned and for sale -> Show price, hover to cancel
+            {canList && "SELL"}
+            {canCancelListing && (
               <>
                 <span className="group-hover:hidden">{formatEther(nft.price)} ETH</span>
                 <span className="hidden group-hover:inline">CANCEL LISTING</span>
               </>
             )}
-            {forSale && !owned && ( // Not owned but for sale -> Show price, hover to buy
+            {isAvailableToBuy && (
               <>
                 <span className="group-hover:hidden">{formatEther(nft.price)} ETH</span>
                 <span className="hidden group-hover:inline">BUY NOW</span>
               </>
             )}
-            {/* If neither forSale nor owned (e.g., owned by someone else and not listed),
-                or if connectedAddress is null, the button might not show meaningful text.
-                Consider adding a default or hiding the button in such cases.
-                For now, the disabled state handles it. */}
+            {!canList && !canCancelListing && !isAvailableToBuy && "VIEW DETAILS"}
           </>
         )}
       </button>

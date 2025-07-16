@@ -1,3 +1,61 @@
+
+import { useQuery } from 'urql';
+import { useAuthStore } from '@/store/useAuthStore';
+import { contractAddress } from "@/config/connectionKeys"; 
+import { parseNFT } from './helpers'; // <<-- IMPORTANT: Use parseNFT, not parseRawNFT
+
+const GET_OWNED_LISTED_NFTS_UPDATED = `
+  query GetOwnedListedNFTs($listerAddress: Bytes!, $marketplaceContractAddress: Bytes!) {
+    nfts(
+      where: {
+        currentOwner: $marketplaceContractAddress,
+        listedBy: $listerAddress,
+        isListed: true
+      }
+    ) {
+      id
+      tokenId
+      currentOwner
+      tokenURI
+      isListed
+      price
+      createdAtTimestamp
+      createdAtBlockNumber
+      listedBy
+    }
+  }
+`;
+
+const useOwnedListedNFTs = () => {
+  const address = useAuthStore(state => state.connectedAddress); // This is the user's wallet address
+
+  const [result, refetch] = useQuery({
+    query: GET_OWNED_LISTED_NFTS_UPDATED, // Use the updated query
+    variables: {
+      listerAddress: address?.toLowerCase() ?? '0x0000000000000000000000000000000000000000', // Pass user's address as listerAddress
+      marketplaceContractAddress: contractAddress.toLowerCase(), // Pass marketplace address
+    },
+    pause: !address, // Only run if address exists
+  });
+
+  const { data, fetching, error } = result;
+
+  // Crucially, map over data.nfts and use parseNFT
+  const ownedListedNFTs = data?.nfts.map(parseNFT) || [];
+
+  return {
+    ownedListedNFTs,
+    loading: fetching,
+    error,
+    refetch,
+  };
+};
+
+export default useOwnedListedNFTs;
+
+
+
+/*
 import { useQuery } from 'urql';
 import { useAuthStore } from '@/store/useAuthStore';
 import { contractAddress } from  "@/config/connectionKeys";
@@ -44,6 +102,7 @@ const useOwnedListedNFTs = () => {
 };
 
 export default useOwnedListedNFTs; 
+*/
 
 /*
 
