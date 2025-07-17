@@ -99,7 +99,7 @@ const NFTCard = (props) => {
 
  //---------------------------------------------------------------------------------------------------------------------------------
 
-  // --- NEW LOGIC FOR OWNERSHIP AND LISTING STATUS ---
+  // --- LOGIC FOR OWNERSHIP AND LISTING STATUS ---
   // `nft` now comes from the `nfts` query and has `currentOwner`, `isListed`, `listedBy`
   const isCurrentlyListed = nft.isListed;
 
@@ -162,7 +162,7 @@ const NFTCard = (props) => {
     try {
       await buyNFT(tokenId, price); // Price should be in Wei string as passed from subgraph
       // router.push("/owned"); // Removed, let parent (OwnedPage) handle full page refresh if needed
-      toast.success("✅ NFT purchased! Your collection will be updated shortly.");
+      toast.success("✅ NFT purchased!");
       if (onActionSuccess) onActionSuccess(); // Trigger parent refetch
     } catch (e) {
       showErrorToast("❌ NFT purchase failed. See console for details.");
@@ -177,7 +177,7 @@ const NFTCard = (props) => {
     // setLoading(true);
     try {
       await cancelListing(tokenId);
-      toast.success("✅ Listing canceled! Your collection will be updated shortly.");
+      toast.success("✅ Listing canceled!");
       if (onActionSuccess) onActionSuccess(); // Trigger parent refetch
     } catch (e) {
       showErrorToast("❌ Failed to cancel listing. See console for details.");
@@ -188,14 +188,14 @@ const NFTCard = (props) => {
 
     //---------------------------------------------------------------------------------------------------------------------------------
 
-  const onSellConfirmed = async (priceEth) => { // priceEth will be a BigNumber from SellPopup
+  const onSellConfirmed = async (priceEth) => { // priceEth will be a BigNumber from SellPopup ie wei value
     setSellPopupOpen(false);
     // setLoading(true);
     try {
       // useNftStore.listNFT expects price to be an ethers.BigNumber or string like "0.05"
-      // SellPopup likely returns a BigNumber from ethers.
+      // SellPopup likely returns a BigNumber wei value ... from ethers input in SellPopup.jsx
       await listNFT(nft.tokenId, priceEth); // nft.tokenId is your tokenId
-      toast.success("✅ NFT listed for sale! Changes will be reflected shortly.");
+      toast.success("✅ NFT listed for sale!");
       if (onActionSuccess) onActionSuccess(); // Trigger parent refetch
     } catch (e) {
       showErrorToast("❌ Failed to list NFT for sale. See console for details.");
@@ -205,11 +205,12 @@ const NFTCard = (props) => {
   };
 
     //---------------------------------------------------------------------------------------------------------------------------------
+  const formatToEth = (wei) => (Number(wei) / 10 ** 18).toFixed(4); // Convert wei to ETH 
 
   return (
     <div
       className={classNames(
-        "flex w-72 flex-shrink-0 flex-col overflow-hidden rounded-xl border font-semibold shadow-sm bg-gray-900 text-white",
+        "sm:w-[288px] w-full rounded-[15px] bg-[#1c1c24] cursor-pointer overflow-hidden border font-semibold shadow-sm text-white",
         className
       )}
     >
@@ -217,34 +218,26 @@ const NFTCard = (props) => {
         <img
           src={meta.imageURL}
           alt={meta.name}
-          className="h-80 w-full object-cover object-center"
+          className="h-[216px] w-full object-cover object-center rounded-[15px]"
         />
       ) : (
-        <div className="flex h-80 w-full items-center justify-center bg-gray-700">
+        <div className="flex h-[158px] w-full items-center justify-center bg-gray-700">
           {loading ? "Loading Metadata..." : "No Image."}
         </div>
       )}
 
       <div className="flex flex-col p-4">
-        <p className="text-lg">{meta?.name ?? `NFT #${nft.tokenId}`}</p>
-        <span className="text-sm font-normal text-gray-300">
+        <p className="font-epilogue font-semibold text-[16px] text-white text-left leading-[26px] truncate">{meta?.name ?? `NFT #${nft.tokenId}`}</p>
+        <span className="my-[5px] font-epilogue font-normal text-[#808191] text-left leading-[22px] truncate">
           {meta?.description ?? "No description available."}
         </span>
-        {/* Display current owner using nft.currentOwner */}
-        {/*
-          IMPORTANT: You also have an AddressAvatar here using `nft.to`.
-          This also needs to be changed from `nft.to` to `nft.currentOwner`.
-          The error message for `forSale` implies the issue is in the price display block,
-          but if AddressAvatar uses `nft.to`, that's another potential issue.
-          I'll assume you already got the previous fix in for the `AddressAvatar`
-          prop, but if not, ensure it uses `nft.currentOwner`.
-        */}
+
         <AddressAvatar address={nft.currentOwner} className="mt-2 text-sm text-gray-400" />
 
 
         {/* FIX: Change `forSale` to `isCurrentlyListed` here */}
         {isCurrentlyListed && nft.price && nft.price !== "0" && (
-          <p className="text-xl font-bold mt-2">Price: {formatEther(nft.price)} ETH</p>
+          <p className="text-md mt-2 text-gray-400">Price: {formatToEth(nft.price)} ETH</p>
         )}
         {/* FIX: Change `!forSale` to `!isCurrentlyListed` here */}
         {!isCurrentlyListed && (
@@ -254,7 +247,7 @@ const NFTCard = (props) => {
 
       {/* Action Button */}
       <button
-        className="group flex h-16 items-center justify-center bg-blue-600 text-lg font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+        className="group w-full bg-emerald-600  hover:bg-emerald-500 text-white font-semibold py-2 px-4 rounded-[5px] transition-colors duration-300 flex items-center justify-center text-lg disabled:opacity-50 disabled:cursor-not-allowed "
         onClick={onButtonClick}
         disabled={isActionLoading || loading}
       >
@@ -263,13 +256,13 @@ const NFTCard = (props) => {
             {canList && "SELL"}
             {canCancelListing && (
               <>
-                <span className="group-hover:hidden">{formatEther(nft.price)} ETH</span>
-                <span className="hidden group-hover:inline">CANCEL LISTING</span>
+
+                <span className="group-hover:inline">CANCEL LISTING</span>
               </>
             )}
             {isAvailableToBuy && (
               <>
-                <span className="group-hover:hidden">{formatEther(nft.price)} ETH</span>
+                <span className="group-hover:hidden">{formatToEth(nft.price)} ETH</span>
                 <span className="hidden group-hover:inline">BUY NOW</span>
               </>
             )}
@@ -282,7 +275,7 @@ const NFTCard = (props) => {
       <SellPopup
         open={sellPopupOpen}
         onClose={() => setSellPopupOpen(false)}
-        onSubmit={onSellConfirmed}
+        onSubmit={onSellConfirmed} // onSubmit represents the onSellConfirmed( priceEth ) function ...so in SellPopup.jsx, you can call onSubmit(wei) ..as a result it will trigger the onSellConfirmed function with the price in ETH in parent component
       />
     </div>
   );

@@ -19,7 +19,7 @@ export const useNftStore = create((set, get) => ({
         set({ creatingNFT: true });
         try {
             const tx = await contractInstance.createNFT(metadataURL);
-            toast("⏳ Creating NFT...", { icon: '⏳' }); // Provide immediate feedback
+            toast(" Creating NFT...", { icon: '⏳' }); // Provide immediate feedback
             await tx.wait();
             toast.success("✅ NFT created!");
         } catch (error) {
@@ -30,15 +30,16 @@ export const useNftStore = create((set, get) => ({
         }
     },
 
-    listNFT: async (tokenId, price) => {
+    listNFT: async (tokenId, priceInWeiBigInt) => { // Renamed 'price' to 'priceInWeiBigInt' for clarity
         const { contractInstance } = useAuthStore.getState();
         set({ listingNFT: true });
 
         try {
         // Convert price (e.g., from string input) to Wei
-        const priceInWei = parseEther(price.toString()); // price should be a number or string like "0.05"
-        const tx = await contractInstance.listNFT(tokenId, priceInWei);
-        toast("⏳ Listing NFT...", { icon: '⏳' });
+        // const priceInWei = parseEther(price.toString()); <--- THIS IS THE PROBLEM LINE
+
+        const tx = await contractInstance.listNFT(tokenId, priceInWeiBigInt); // Use the BigInt directly , no parseEther needed
+        toast(" Listing NFT...", { icon: '⏳' });
         await tx.wait();
         toast.success("✅ NFT listed for sale!");
         } catch (error) {
@@ -57,7 +58,7 @@ export const useNftStore = create((set, get) => ({
         // Convert price to Wei and pass it as the value for the transaction
         const priceInWei = parseEther(price.toString()); // price should be the listing price from subgraph
         const tx = await contractInstance.buyNFT(tokenId, { value: priceInWei });
-        toast("⏳ Buying NFT...", { icon: '⏳' });
+        toast(" Buying NFT...", { icon: '⏳' });
         await tx.wait();
         toast.success("✅ NFT purchased successfully!");
         } catch (error) {
@@ -74,7 +75,7 @@ export const useNftStore = create((set, get) => ({
         
         try {
         const tx = await contractInstance.cancelListing(tokenId);
-        toast("⏳ Cancelling listing...", { icon: '⏳' });
+        toast(" Cancelling listing...", { icon: '⏳' });
         await tx.wait();
         toast.success("✅ NFT listing cancelled!");
         } catch (error) {
@@ -90,7 +91,7 @@ export const useNftStore = create((set, get) => ({
         set({ withdrawingFunds: true });
         try {
         const tx = await contractInstance.withdrawFunds();
-        toast("⏳ Withdrawing funds...", { icon: '⏳' });
+        toast(" Withdrawing funds...", { icon: '⏳' });
         await tx.wait();
         toast.success("✅ Funds withdrawn!");
         } catch (error) {

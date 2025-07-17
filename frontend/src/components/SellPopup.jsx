@@ -1,5 +1,4 @@
 
-// SellPopup.jsx (or SellPopup.js)
 import { ethers, parseEther } from "ethers";
 import { useState } from "react";
 import Button from "./Button";
@@ -23,7 +22,7 @@ const SellPopup = (props) => {
     let wei;
     try {
       // parseEther now returns a JavaScript native BigInt
-      wei = parseEther(price);
+      wei = parseEther(price); // the eth value input by the user is converted to wei ie 1 ETH = 10^18 wei
     } catch (e) {
       console.error("Error parsing price with ethers.parseEther:", e); // Updated log message
       return setError("Invalid price format. Please enter a valid number.");
@@ -34,7 +33,7 @@ const SellPopup = (props) => {
       return setError("Price must be greater than 0.");
     }
 
-    onSubmit(wei); // onSubmit will now receive a JavaScript BigInt
+    onSubmit(wei); // onSubmit will now receive a JavaScript BigInt ..
   };
 
   return (
