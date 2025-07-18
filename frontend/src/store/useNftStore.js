@@ -51,13 +51,18 @@ export const useNftStore = create((set, get) => ({
         }
      },
 
+
     buyNFT: async (tokenId, price) => {
         const { contractInstance } = useAuthStore.getState();
         set({ buyingNFT: true });
         try {
         // Convert price to Wei and pass it as the value for the transaction
-        const priceInWei = parseEther(price.toString()); // price should be the listing price from subgraph
-        const tx = await contractInstance.buyNFT(tokenId, { value: priceInWei });
+        //const priceInWei = parseEther(price.toString()); // price should be the listing price from subgraph
+
+        const tx = await contractInstance.buyNFT(tokenId, { value: price }); 
+        // we use { value: price } is because in ethers.js, when you call a payable smart contract function, you must pass the ETH value inside an object called the overrides parameter
+        // This object can contain various properties, such as the value of the transaction, gas limit, etc.
+        // In this case, we are passing the price as the value to be sent with the transaction
         toast(" Buying NFT...", { icon: '⏳' });
         await tx.wait();
         toast.success("✅ NFT purchased successfully!");

@@ -62,7 +62,7 @@ const Page = () => {
 
       {hasContent && (
         <>
-          <h2 className="text-2xl font-bold mb-4 text-white">Your Owned NFTs</h2>
+          <h2 className="text-2xl font-bold mb-4 text-white">Your Owned NFTs : </h2>
           <div className="flex flex-wrap gap-4">
             {ownedNFTs?.map((nft) => (
               // Pass the onActionSuccess prop here!
@@ -73,11 +73,11 @@ const Page = () => {
           {ownedListedNFTs && ownedListedNFTs.length > 0 && (
             <>
               <div className="relative my-8 h-[1px] w-full flex-shrink-0 bg-gray-600">
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform bg-gray-900 px-4 font-mono font-semibold text-white">
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transform bg-gray-900 px-4 font-mono  text-white">
                   LISTED BY YOU
                 </div>
               </div>
-              <h2 className="text-2xl font-bold mb-4 text-white">Your Listed NFTs</h2>
+              <h2 className="text-2xl font-bold mb-4 text-white">Your Listed NFTs : </h2>
               <div className="flex flex-wrap gap-4">
                 {ownedListedNFTs?.map((nft) => (
                   // Pass the onActionSuccess prop here!

@@ -111,9 +111,23 @@ const NFTCard = (props) => {
   );
 
   // Determine if the NFT is listed and NOT owned by the connected user (i.e., someone else's listing)
+
+  /*
   const isAvailableToBuy = isCurrentlyListed &&
-                           nft.currentOwner?.toLowerCase() === marketplaceContractAddress.toLowerCase() &&
-                           nft.listedBy?.toLowerCase() !== connectedAddress.toLowerCase();
+                          nft.currentOwner?.toLowerCase() === marketplaceContractAddress.toLowerCase() &&
+                          nft.listedBy?.toLowerCase() !== connectedAddress.toLowerCase();
+
+
+When connectedAddress is null or undefined, calling .toLowerCase() throws the error.
+
+(connectedAddress?.toLowerCase() ?? "") safely handles null cases by defaulting to an empty string, preventing runtime errors. 
+
+  */
+
+
+  const isAvailableToBuy = isCurrentlyListed &&
+                            nft.currentOwner?.toLowerCase() === marketplaceContractAddress.toLowerCase() &&
+                            nft.listedBy?.toLowerCase() !== (connectedAddress?.toLowerCase() ?? ""); //corrected
 
 
   // Determine if the connected user can cancel a listing
