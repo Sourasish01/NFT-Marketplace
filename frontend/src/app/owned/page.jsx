@@ -7,11 +7,13 @@ import useOwnedListedNFTs from '@/store/useGraphStoreHooks.js/useOwnedListedNFTs
 //import { formatEther } from "ethers"; // For formatting prices if your `price` from subgraph is in Wei
 import NFTCard from '@/components/NFTcard';
 import EmptyState from '@/components/EmptyState'; // Assuming you have an EmptyState component for displaying empty states
+//import { useRouter } from "next/navigation";
 
 const Page = () => { 
   const {/* authUser,*/ isLoggingIn, connectedAddress } = useAuthStore();
   const { ownedNFTs, loading: loadingOwned, error: errorOwned, refetch: refetchOwnedNFTs } = useOwnedNFTs();
   const { ownedListedNFTs, loading: loadingListed, error: errorListed, refetch: refetchOwnedListedNFTs } = useOwnedListedNFTs();
+ // const router = useRouter();
 
   console.log("connectedAddress:", connectedAddress);
   console.log("errorOwned:", errorOwned);
@@ -24,8 +26,11 @@ const Page = () => {
   // Combined refetch handler to pass to NFTCard
   const handleActionSuccess = () => {
     // Force re-fetch from network to get the latest state
+    
     refetchOwnedNFTs({ requestPolicy: 'network-only' });
     refetchOwnedListedNFTs({ requestPolicy: 'network-only' });
+
+   // router.refresh(); // this refreshes the route, fetching fresh data
   };
 
   // Determine UI states

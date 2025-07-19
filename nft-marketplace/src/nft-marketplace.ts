@@ -64,6 +64,8 @@ export function handleNFTTransfer(event: NFTTransferEvent): void {
   // - cancelListing: from=address(this), to=msg.sender (owner is msg.sender - original seller) -> not listed
 
   // Your contract passes the marketplace contract address as `address(this)`
+
+  /*
   const marketplaceContractAddress = event.address; // The address of the contract emitting the event
 
   if (event.params.to.toHexString() == marketplaceContractAddress.toHexString()) { // NFT transferred TO the marketplace (it's listed)
@@ -80,6 +82,25 @@ export function handleNFTTransfer(event: NFTTransferEvent): void {
     nft.price = BigInt.fromI32(0); // Not listed, so price is 0
     nft.listedBy = Bytes.fromHexString("0x0000000000000000000000000000000000000000"); // Reset listedBy
   }
+
+  */
+
+  const marketplaceAddress = Bytes.fromHexString("0xf25d6cDc4E7f525ef47616B48aa79820e0026Bb2");
+
+if (event.params.to == marketplaceAddress) {
+  nft.isListed = true;
+  nft.price = event.params.price;
+  nft.listedBy = event.params.from;
+} else if (event.params.from == marketplaceAddress) {
+  nft.isListed = false;
+  nft.price = BigInt.fromI32(0);
+  nft.listedBy = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
+} else {
+  nft.isListed = false;
+  nft.price = BigInt.fromI32(0);
+  nft.listedBy = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
+}
+
 
   // Save the updated NFT entity
   nft.save();
