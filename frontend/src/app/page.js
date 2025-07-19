@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import useListedNFTs from "@/store/useGraphStoreHooks.js/useListedNFTs"; 
 import NFTCard from "@/components/NFTcard";
 import EmptyState from "@/components/EmptyState";
-//import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 const HomePage = () => {
   const { connectedAddress, isLoggingIn } = useAuthStore();
@@ -20,11 +20,11 @@ const HomePage = () => {
   const hasError = !!error;
   const isEmpty = !isLoading && !hasError && listedNFTs?.length === 0;
   const hasData = !isLoading && !hasError && listedNFTs?.length > 0;
- // const router = useRouter();
+  const router = useRouter();
 
   const handleActionSuccess = () => {
     refetch({ requestPolicy: "network-only" });
-    //router.refresh(); // this refreshes the route, fetching fresh data
+    router.refresh(); // this refreshes the route, fetching fresh data
   };
 
   return (
